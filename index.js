@@ -5,16 +5,14 @@ const { randomUUID } = require('crypto');
 const { ObjectId } = require('mongodb');
 const cors = require('cors');
 
-// Importar configuraciones y constantes
 const { PORT, RABBIT_URL, MONGO_URL, QUEUE_NAMES } = require('./config');
 const { SAMPLE_RECIPES } = require('./constants/recipes');
 const logger = require('./logger');
 
 const app = express();
 
-// Configurar CORS
 app.use(cors({
-  origin: '*',  // Permite todos los orígenes - ajustar en producción
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -22,7 +20,6 @@ app.use(cors({
 app.use(express.json());
 
 async function start() {
-  // Inicializar logger
   await logger.initLogger();
   await logger.info('Servicio de Cocina iniciado');
   
@@ -87,7 +84,6 @@ async function start() {
     await logger.info(`Ingredientes obtenidos para pedido ${orderId}. Cocinando "${dishName}"...`);
     await logger.info(`Pedido ${orderId} completado. Plato "${dishName}" listo para servir.`);
     
-    // Incluir más información del plato en el mensaje de finalización
     const doneMsg = { 
       orderId: orderId, 
       dish: dishName,
@@ -111,7 +107,6 @@ async function start() {
     res.send('Servicio de Cocina operativo');
   });
 
-  // Endpoint para obtener todas las recetas disponibles
   app.get('/recipes', async (_req, res) => {
     try {
       const allRecipes = await recipesColl.find().toArray();
@@ -123,7 +118,6 @@ async function start() {
     }
   });
 
-  // Endpoint para obtener una receta específica por su ID
   app.get('/recipes/:id', async (req, res) => {
     try {
       const recipeId = req.params.id;
