@@ -2,10 +2,11 @@ const express = require('express');
 const amqp = require('amqplib');
 const { MongoClient } = require('mongodb');
 const { randomUUID } = require('crypto');
+const { ObjectId } = require('mongodb');
 
-const PORT = process.env.PORT || 3002;
-const RABBIT_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
-const MONGO_URL = process.env.MONGO_URL || 'mongodb+srv://heanfig:UBP3AqbGlPWEpdDn@alegra-test.kbne8.mongodb.net/?retryWrites=true&w=majority&appName=alegra-test';
+// Importar configuraciones y constantes
+const { PORT, RABBIT_URL, MONGO_URL, QUEUE_NAMES } = require('./config');
+const { SAMPLE_RECIPES } = require('./constants/recipes');
 
 const app = express();
 app.use(express.json());
@@ -17,15 +18,7 @@ async function start() {
   const recipesColl = db.collection('recipes');
   
   if (await recipesColl.countDocuments() === 0) {
-    const sampleRecipes = [
-      { name: "Arroz con Pollo", ingredients: [ { name: "rice", quantity: 2 }, { name: "chicken", quantity: 2 }, { name: "tomato", quantity: 1 }, { name: "onion", quantity: 1 } ] },
-      { name: "Ensalada César", ingredients: [ { name: "lettuce", quantity: 2 }, { name: "chicken", quantity: 1 }, { name: "cheese", quantity: 1 }, { name: "lemon", quantity: 1 } ] },
-      { name: "Puré de Papas con Carne", ingredients: [ { name: "potato", quantity: 3 }, { name: "meat", quantity: 2 }, { name: "onion", quantity: 1 } ] },
-      { name: "Risotto de Queso", ingredients: [ { name: "rice", quantity: 2 }, { name: "cheese", quantity: 2 }, { name: "onion", quantity: 1 }, { name: "tomato", quantity: 1 } ] },
-      { name: "Hamburguesa con Papas", ingredients: [ { name: "meat", quantity: 1 }, { name: "lettuce", quantity: 1 }, { name: "tomato", quantity: 1 }, { name: "cheese", quantity: 1 }, { name: "potato", quantity: 2 }, { name: "ketchup", quantity: 1 } ] },
-      { name: "Pollo al Limón", ingredients: [ { name: "chicken", quantity: 2 }, { name: "lemon", quantity: 2 }, { name: "potato", quantity: 2 }, { name: "onion", quantity: 1 } ] }
-    ];
-    await recipesColl.insertMany(sampleRecipes);
+    await recipesColl.insertMany(SAMPLE_RECIPES);
     console.log("ℹ Recetas de ejemplo insertadas en la base de datos de Cocina.");
   }
   const recipes = await recipesColl.find().toArray();
@@ -33,9 +26,9 @@ async function start() {
   const connection = await amqp.connect(RABBIT_URL);
   const channel = await connection.createChannel();
 
-  await channel.assertQueue('orders');       
-  await channel.assertQueue('ingredient_requests'); 
-  await channel.assertQueue('order_done'); 
+  await channel.assertQueue(QUEUE_NAMES.ORDERS);       
+  await channel.assertQueue(QUEUE_NAMES.INGREDIENT_REQUESTS); 
+  await channel.assertQueue(QUEUE_NAMES.ORDER_DONE); 
 
   const replyQueue = await channel.assertQueue('', { exclusive: true });
   const replyQueueName = replyQueue.queue;
@@ -67,7 +60,7 @@ async function start() {
       pendingResponses[correlationId] = resolve;
     });
     channel.sendToQueue(
-      'ingredient_requests',
+      QUEUE_NAMES.INGREDIENT_REQUESTS,
       Buffer.from(JSON.stringify(ingredientRequest)),
       { correlationId: correlationId, replyTo: replyQueueName }
     );
@@ -75,11 +68,18 @@ async function start() {
     await responsePromise;
     console.log(`✅ Ingredientes obtenidos para pedido ${orderId}. Cocinando "${dishName}"...`);
     console.log(`🍽 Pedido ${orderId} completado. Plato "${dishName}" listo para servir.`);
-    const doneMsg = { orderId: orderId, dish: dishName };
-    channel.sendToQueue('order_done', Buffer.from(JSON.stringify(doneMsg)));
+    
+    // Incluir más información del plato en el mensaje de finalización
+    const doneMsg = { 
+      orderId: orderId, 
+      dish: dishName,
+      image: recipe.image,
+      description: recipe.description
+    };
+    channel.sendToQueue(QUEUE_NAMES.ORDER_DONE, Buffer.from(JSON.stringify(doneMsg)));
   };
 
-  channel.consume('orders', (msg) => {
+  channel.consume(QUEUE_NAMES.ORDERS, (msg) => {
     if (msg === null) return;
     handleOrderMessage(msg).catch(err => {
       console.error("✘ Error procesando pedido en Cocina:", err);
@@ -90,6 +90,32 @@ async function start() {
 
   app.get('/', (_req, res) => {
     res.send('Servicio de Cocina operativo');
+  });
+
+  // Endpoint para obtener todas las recetas disponibles
+  app.get('/recipes', async (_req, res) => {
+    try {
+      const allRecipes = await recipesColl.find().toArray();
+      res.json(allRecipes);
+    } catch (error) {
+      console.error('✘ Error al obtener recetas:', error);
+      res.status(500).send('Error del servidor');
+    }
+  });
+
+  // Endpoint para obtener una receta específica por su ID
+  app.get('/recipes/:id', async (req, res) => {
+    try {
+      const recipeId = req.params.id;
+      const recipe = await recipesColl.findOne({ _id: new ObjectId(recipeId) });
+      if (!recipe) {
+        return res.status(404).send('Receta no encontrada');
+      }
+      res.json(recipe);
+    } catch (error) {
+      console.error('✘ Error al obtener receta:', error);
+      res.status(500).send('Error del servidor');
+    }
   });
 
   app.listen(PORT, () => {
