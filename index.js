@@ -21,7 +21,7 @@ app.use(express.json());
 
 async function start() {
   await logger.initLogger();
-  await logger.info('Servicio de Cocina iniciado');
+  await logger.info('🍳 Servicio de Cocina iniciado');
   
   const client = new MongoClient(MONGO_URL);
   await client.connect();
@@ -134,7 +134,7 @@ async function start() {
   });
 
   app.listen(PORT, () => {
-    logger.info(`Servicio de Cocina escuchando en puerto ${PORT}`);
+    console.log(`Servicio de Cocina escuchando en puerto ${PORT}`);
   });
 }
 
