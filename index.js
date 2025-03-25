@@ -81,7 +81,7 @@ async function start() {
     );
 
     await responsePromise;
-    await logger.info(`Ingredientes obtenidos para pedido ${orderId}. Cocinando "${dishName}"...`);
+    await logger.info(`🍳 Ingredientes obtenidos para pedido ${orderId}. Cocinando "${dishName}"...`);
     await logger.info(`Pedido ${orderId} completado. Plato "${dishName}" listo para servir.`);
     
     const doneMsg = { 
@@ -110,7 +110,6 @@ async function start() {
   app.get('/recipes', async (_req, res) => {
     try {
       const allRecipes = await recipesColl.find().toArray();
-      await logger.info(`Se consultaron ${allRecipes.length} recetas`);
       res.json(allRecipes);
     } catch (error) {
       await logger.error(`Error al obtener recetas: ${error.message}`, { stack: error.stack });
