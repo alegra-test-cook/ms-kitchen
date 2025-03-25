@@ -15,11 +15,15 @@ async function start() {
   await client.connect();
   const db = client.db('restaurant');
   const recipesColl = db.collection('recipes');
+  
   if (await recipesColl.countDocuments() === 0) {
     const sampleRecipes = [
-      { name: "Spaghetti Boloñesa", ingredients: [ { name: "pasta", quantity: 1 }, { name: "salsa de tomate", quantity: 2 }, { name: "carne molida", quantity: 1 } ] },
-      { name: "Ensalada César", ingredients: [ { name: "lechuga", quantity: 2 }, { name: "crutones", quantity: 1 }, { name: "queso parmesano", quantity: 1 }, { name: "pollo", quantity: 1 } ] },
-      { name: "Pizza Margarita", ingredients: [ { name: "masa", quantity: 1 }, { name: "salsa de tomate", quantity: 1 }, { name: "queso mozzarella", quantity: 2 }, { name: "albahaca", quantity: 1 } ] }
+      { name: "Arroz con Pollo", ingredients: [ { name: "rice", quantity: 2 }, { name: "chicken", quantity: 2 }, { name: "tomato", quantity: 1 }, { name: "onion", quantity: 1 } ] },
+      { name: "Ensalada César", ingredients: [ { name: "lettuce", quantity: 2 }, { name: "chicken", quantity: 1 }, { name: "cheese", quantity: 1 }, { name: "lemon", quantity: 1 } ] },
+      { name: "Puré de Papas con Carne", ingredients: [ { name: "potato", quantity: 3 }, { name: "meat", quantity: 2 }, { name: "onion", quantity: 1 } ] },
+      { name: "Risotto de Queso", ingredients: [ { name: "rice", quantity: 2 }, { name: "cheese", quantity: 2 }, { name: "onion", quantity: 1 }, { name: "tomato", quantity: 1 } ] },
+      { name: "Hamburguesa con Papas", ingredients: [ { name: "meat", quantity: 1 }, { name: "lettuce", quantity: 1 }, { name: "tomato", quantity: 1 }, { name: "cheese", quantity: 1 }, { name: "potato", quantity: 2 }, { name: "ketchup", quantity: 1 } ] },
+      { name: "Pollo al Limón", ingredients: [ { name: "chicken", quantity: 2 }, { name: "lemon", quantity: 2 }, { name: "potato", quantity: 2 }, { name: "onion", quantity: 1 } ] }
     ];
     await recipesColl.insertMany(sampleRecipes);
     console.log("ℹ Recetas de ejemplo insertadas en la base de datos de Cocina.");
